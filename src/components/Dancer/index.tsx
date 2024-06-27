@@ -1,9 +1,14 @@
+import { IsEnteredAtom } from "@/stores";
 import { useAnimations, useGLTF, useScroll } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
+import { useRecoilValue } from "recoil";
 import * as THREE from "three";
+import { Loader } from "../Loader";
 
 export const Dancer = () => {
+  const isEntered = useRecoilValue(IsEnteredAtom);
+
   const dancerRef = useRef<THREE.Object3D>(null);
 
   const { scene, animations } = useGLTF("/models/dancer.glb"); // useGLTF Hook으로 모델링 로드
@@ -19,12 +24,17 @@ export const Dancer = () => {
     console.log("scroll offset", scroll.offset); // 현재 스크롤한 값
   });
   useEffect(() => {
+    if (!isEntered) return;
     actions["wave"]?.play();
   }, [actions]);
-  return (
-    <>
-      <primitive ref={dancerRef} object={scene} scale={0.05} />
-      <ambientLight intensity={2} />
-    </>
-  );
+
+  if (isEntered) {
+    return (
+      <>
+        <primitive ref={dancerRef} object={scene} scale={0.05} />
+        <ambientLight intensity={2} />
+      </>
+    );
+  }
+  return <Loader isCompleted />;
 };
