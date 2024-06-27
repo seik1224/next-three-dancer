@@ -233,7 +233,9 @@ export const MovingDom = () => {
 
 ---
 
-##
+## GSAP
+
+npm i gsap
 
 MainCanvas.tsx
 
