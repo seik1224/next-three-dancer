@@ -1,5 +1,5 @@
 "use client";
-import { OrbitControls } from "@react-three/drei";
+import { OrbitControls, ScrollControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import { Dancer } from "../Dancer";
@@ -22,8 +22,10 @@ export const MainCanvas = () => {
         }}
         scene={{ background: new THREE.Color(0x000000) }}
       >
-        <Dancer />
-        <OrbitControls />
+        {/* 페이지 8장, 댐핑 : 스무스하게 이동 */}
+        <ScrollControls pages={8} damping={0.25}>
+          <Dancer />
+        </ScrollControls>
       </Canvas>
     </>
   );
