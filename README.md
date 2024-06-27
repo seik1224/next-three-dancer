@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+## 필요 라이브러리 설치
 
-## Getting Started
+npx create-next-app@latest ./
+npm i three @react-three/drei @react-three/fiber recoil styled-components
 
-First, run the development server:
+---
+
+## 초기 세팅
+
+MainCanvas파일
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+"use client";
+import { OrbitControls } from "@react-three/drei";
+import { Canvas } from "@react-three/fiber";
+import * as THREE from "three";
+import { Dancer } from "../Dancer";
+
+export const MainCanvas = () => {
+  const aspectRatio = window.innerWidth / window.innerHeight;
+
+  return (
+    <>
+      <Canvas
+        id="canvas"
+        gl={{ antialias: true }}
+        shadows="soft"
+        camera={{
+          fov: 30,
+          aspect: aspectRatio,
+          near: 0.01,
+          far: 1000,
+          position: [0, 6, 12],
+        }}
+        scene={{ background: new THREE.Color(0x000000) }}
+      >
+        <Dancer />
+        <OrbitControls />
+      </Canvas>
+    </>
+  );
+};
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Modeling파일
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+import { useAnimations, useGLTF } from "@react-three/drei";
+import { useEffect, useRef } from "react";
+import * as THREE from "three";
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+export const Dancer = () => {
+  const dancerRef = useRef<THREE.Object3D>(null);
 
-## Learn More
+  const { scene, animations } = useGLTF("/models/dancer.glb"); // useGLTF Hook으로 모델링 로드
+  console.log(scene, animations);
 
-To learn more about Next.js, take a look at the following resources:
+  const { actions } = useAnimations(animations, dancerRef); // useAnimations Hook으로 애니메이션 로드
+  console.log("actions", actions);
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+  useEffect(() => {
+    actions["wave"]?.play();
+  }, [actions]);
+  return (
+    <>
+      <primitive ref={dancerRef} object={scene} scale={0.05} />
+      <ambientLight intensity={2} />
+    </>
+  );
+};
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+```
