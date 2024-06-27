@@ -236,17 +236,158 @@ export const MovingDom = () => {
 ## GSAP
 
 npm i gsap
-
-MainCanvas.tsx
+useEffect의 dependency만 잘 확인하자
+three.camera.position, three.camera.rotation과 같이 camera가 바뀌는 것도 넣어줘야함
 
 ```bash
+useEffect(() => {
+    if (!isEntered) return;
+    actions["wave"]?.play();
+  }, [actions, isEntered]);
+
+  // GSAP 시작
+  useEffect(() => {
+    if (!isEntered) return;
+    if (!dancerRef.current) return;
+    gsap.fromTo(
+      three.camera.position,
+      {
+        x: -5,
+        y: 5,
+        z: 5,
+      },
+      {
+        duration: 2.5,
+        x: 0,
+        y: 6,
+        z: 12,
+      }
+    );
+    gsap.fromTo(
+      three.camera.rotation,
+      {
+        z: Math.PI,
+      },
+      {
+        duration: 2.5,
+        z: 0,
+      }
+    );
+  }, [isEntered, three.camera.position, three.camera.rotation]);
 
 ```
 
-Modeling.tsx
+---
+
+## Timeline
+
+1. 변수선언
+   const timelineRef = useRef<gsap.core.Timeline | null>(null);
+
+2. useFrame
+   seek 함수는 GSAP(GreenSock Animation Platform) 라이브러리에서 제공하는 메서드로, 타임라인의 특정 시점으로 애니메이션을 이동시키는 역할을 합니다.
+
+   timeline.seek(time, suppressEvents);
+   time: 타임라인에서 이동하고자 하는 시점. 초 단위 또는 레이블을 사용할 수 있습니다.
+   suppressEvents: (선택 사항) true로 설정하면 해당 시점으로 이동할 때 발생하는 이벤트를 억제합니다.
+
+   timeline.seek(scroll.offset \* timeline.duration());현재 스크롤 위치에 따라 타임라인의 애니메이션을 동기화하는 역할
 
 ```bash
+useFrame(() => {
+  // console.log("scroll offset", scroll.offset); // 현재 스크롤한 값
+  if (!isEntered || !timelineRef.current) return; // useRef의 current 사용
+  timelineRef.current.seek(scroll.offset * timelineRef.current.duration());
+});
+```
 
+3. useEffect
+
+```bash
+useEffect(() => {
+  if (!isEntered) return;
+  if (!dancerRef.current) return;
+  timelineRef.current = gsap.timeline(); // useRef의 current에 할당
+  timelineRef.current
+    .from(
+      dancerRef.current.rotation,
+      {
+        duration: 4,
+        y: -4 * Math.PI,
+      },
+      0.5
+    )
+    .from(
+      dancerRef.current.position,
+      {
+        duration: 4,
+        x: 3,
+      },
+      "<"
+    )
+    .to(
+      three.camera.position,
+      {
+        duration: 10,
+        x: 2,
+        z: 8,
+      },
+      "<"
+    )
+    .to(three.camera.position, {
+      duration: 10,
+      x: 0,
+      z: 6,
+    })
+    .to(three.camera.position, {
+      duration: 10,
+      x: 0,
+      z: 16,
+    });
+}, [isEntered, three.camera]);
+```
+
+---
+
+## 다른 오브젝트 제어
+
+1. 필요한 조명부터 배치하고 ref를 잘 넣어준다.
+
+```bash
+<rectAreaLight
+  ref={rectAreaLightRef}
+  position={[0, 10, 0]}
+  intensity={30}
+/>
+<pointLight
+  position={[0, 5, 0]}
+  intensity={45}
+  castShadow
+  receiveShadow
+/>
+<hemisphereLight
+  ref={hemisphereLightRef}
+  position={[0, 5, 0]}
+  intensity={0}
+  groundColor={"lime"}
+  color={"blue"}
+/>
+```
+
+2. 애니메이션을 state로 관리하기 위하여 state 만들어준다.
+
+```bash
+  const [currentAnimation, setCurrentAnimation] = useState("wave");
+  const [rotateFinished, setRotateFinished] = useState(false); // 카메라가 마지막에 회전을 마무리 했는지 여부에 따라 useFrame()에서 애니메이션 바꿔주기 위해
+```
+
+3. GSAP에서 사용한다.
+
+```bash
+.to(hemisphereLightRef.current, {
+  duration: 5,
+  intensity: 30,
+})
 ```
 
 ---
