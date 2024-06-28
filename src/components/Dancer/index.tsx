@@ -1,8 +1,8 @@
-import { IsEnteredAtom } from "@/stores";
 import {
   Box,
   Circle,
   Points,
+  PositionalAudio,
   useAnimations,
   useGLTF,
   useScroll,
@@ -11,49 +11,36 @@ import {
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
-import * as THREE from "three";
+import { IsEnteredAtom } from "@/stores";
 import { Loader } from "../Loader";
 import gsap from "gsap";
+import * as THREE from "three";
 
+let timeline: GSAPTimeline;
+const colors = {
+  boxMaterialColor: "#DC4F00",
+  // currentAnimation: "wave",
+};
 export const Dancer = () => {
-  const timelineRef = useRef<gsap.core.Timeline | null>(null); // useRef로 변경
-
-  const colors = useMemo(
-    () => ({
-      boxMaterialColor: "#DC4F00",
-      // currentAnimation: "wave",
-    }),
-    []
-  );
-  const [currentAnimation, setCurrentAnimation] = useState("wave");
-  const [rotateFinished, setRotateFinished] = useState(false); // 카메라가 마지막에 회전을 마무리 했는지 여부
-
-  const three = useThree();
   const isEntered = useRecoilValue(IsEnteredAtom);
-
-  const dancerRef = useRef<THREE.Object3D>(null);
-  const boxRef =
-    useRef<THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>>(null);
+  const three = useThree();
+  const scroll = useScroll(); // ScrollControls 하위에 있는 컴포넌트가 사용 가능한 hook
+  const [currentAnimation, setCurrentAnimation] = useState("wave");
+  const [rotateFinished, setRotateFinished] = useState(false);
+  const { scene, animations } = useGLTF("/models/dancer.glb"); // useGLTF Hook으로 모델링 로드
+  const texture = useTexture("/textures/5.png");
+  const dancerRef = useRef<any>(null);
+  const boxRef = useRef<any>(null);
   const starGroupRef01 = useRef(null);
   const starGroupRef02 = useRef(null);
   const starGroupRef03 = useRef(null);
   const rectAreaLightRef = useRef(null);
   const hemisphereLightRef = useRef(null);
-
-  const { scene, animations } = useGLTF("/models/dancer.glb"); // useGLTF Hook으로 모델링 로드
-  console.log(scene, animations);
-
   const { actions } = useAnimations(animations, dancerRef); // useAnimations Hook으로 애니메이션 로드
-  console.log("actions", actions);
-
-  const scroll = useScroll(); // ScrollControls 하위에 있는 컴포넌트가 사용 가능한 hook
-  console.log("scroll", scroll);
-
-  // texture
-  const texture = useTexture("/textures/5.png");
+  console.log(actions);
   const { positions } = useMemo(() => {
-    const count = 500; // 별의 개수 500개
-    const positions = new Float32Array(count * 3); // 500개를 어레이로 3개씩 나눔
+    const count = 500;
+    const positions = new Float32Array(count * 3);
 
     for (let i = 0; i < count * 3; i++) {
       positions[i] = (Math.random() - 0.5) * 25;
@@ -62,19 +49,17 @@ export const Dancer = () => {
   }, []);
 
   useFrame(() => {
-    // console.log("scroll offset", scroll.offset); // 현재 스크롤한 값
-    if (!isEntered || !timelineRef.current) return; // useRef의 current 사용
-    timelineRef.current.seek(scroll.offset * timelineRef.current.duration());
-
+    if (!isEntered) return;
+    timeline.seek(scroll.offset * timeline.duration());
     if (boxRef.current) {
       boxRef.current.material.color = new THREE.Color(colors.boxMaterialColor);
     }
-
     if (rotateFinished) {
       setCurrentAnimation("breakdancingEnd");
     } else {
       setCurrentAnimation("wave");
     }
+    // console.log(scroll.offset); // scroll.offset을 통해, 현재 스크롤된 offset을 알 수 있다.(스크롤을 하나도 안하면 0, 끝까지 하면 1)
   });
 
   // 초기화
@@ -84,21 +69,18 @@ export const Dancer = () => {
     actions["wave"]?.play();
     three.scene.background = new THREE.Color(colors.boxMaterialColor);
     scene.traverse((obj) => {
+      /*
+        타입에러 
+        obj가 Mesh 타입인지 확인할 수 없기 때문에 발생
+      */
       if ((obj as THREE.Mesh).isMesh) {
-        obj.castShadow = true;
-        obj.receiveShadow = true;
+        (obj as THREE.Mesh).castShadow = true;
+        (obj as THREE.Mesh).receiveShadow = true;
       }
     });
-  }, [
-    actions,
-    isEntered,
-    scene,
-    three.camera,
-    three.scene,
-    colors.boxMaterialColor,
-  ]);
+  }, [actions, isEntered, scene, three.camera, three.scene]);
 
-  // 애니메이션 컨트롤 : 마지막 애니메이션 제어만 담당
+  // 애니메이션 컨트롤
   useEffect(() => {
     let timeout: NodeJS.Timeout;
     if (currentAnimation === "wave") {
@@ -108,7 +90,7 @@ export const Dancer = () => {
         ?.reset()
         .fadeIn(0.5)
         .play()
-        .setLoop(THREE.LoopOnce, 1); // 1번만 실행
+        .setLoop(THREE.LoopOnce, 1);
 
       timeout = setTimeout(() => {
         if (actions[currentAnimation]) {
@@ -120,15 +102,7 @@ export const Dancer = () => {
       clearTimeout(timeout);
       actions[currentAnimation]?.reset().fadeOut(0.5).stop();
     };
-  }, [
-    actions,
-    isEntered,
-    scene,
-    three.camera,
-    three.scene,
-    currentAnimation,
-    scroll.offset,
-  ]);
+  }, [actions, currentAnimation, scroll.offset]);
 
   // gsap 초기 카메라 회전 및 배경 별 반짝임 애니메이션
   useEffect(() => {
@@ -171,7 +145,7 @@ export const Dancer = () => {
     gsap.to(starGroupRef01.current, {
       yoyo: true,
       duration: 2,
-      repeat: -1, // 무한반복
+      repeat: -1,
       ease: "linear",
       size: 0.05,
     });
@@ -195,22 +169,17 @@ export const Dancer = () => {
       ease: "linear",
       size: 0.05,
     });
-  }, [isEntered, three.camera.position, three.camera.rotation, colors]);
+  }, [isEntered, three.camera.position, three.camera.rotation]);
 
   // 스크롤 시, 일어날 애니메이션 컨트롤
   useEffect(() => {
-    if (!isEntered) return;
     if (!dancerRef.current) return;
-
-    // 카메라를 특정위치 중심으로 회전하고 싶을때(태양 지구)
-    // 카메라가 댄서를 중심으로 pivot그룹
     const pivot = new THREE.Group();
     pivot.position.copy(dancerRef.current.position);
     pivot.add(three.camera);
     three.scene.add(pivot);
-
-    timelineRef.current = gsap.timeline(); // useRef의 current에 할당
-    timelineRef.current
+    timeline = gsap.timeline();
+    timeline
       .from(
         dancerRef.current.rotation,
         {
@@ -267,7 +236,6 @@ export const Dancer = () => {
         duration: 10,
         x: 0,
         z: 16,
-        // 애니메이션이 실행되는 시점에 호출되는 메서드
         onUpdate: () => {
           setRotateFinished(false);
         },
@@ -299,7 +267,7 @@ export const Dancer = () => {
     return () => {
       three.scene.remove(pivot);
     };
-  }, [isEntered, three.camera, three.scene, colors]);
+  }, [isEntered, three.camera, three.scene]);
 
   if (isEntered) {
     return (
@@ -325,12 +293,10 @@ export const Dancer = () => {
           color={"blue"}
         />
 
-        {/* 모든 공간을 감싸주는 box를 만들어서 빛을 받는 배경으로 활용 */}
         <Box ref={boxRef} position={[0, 0, 0]} args={[100, 100, 100]}>
           <meshStandardMaterial color={"#DC4F00"} side={THREE.DoubleSide} />
         </Box>
 
-        {/* 모델이 서있는 Circle */}
         <Circle
           castShadow
           receiveShadow
@@ -340,16 +306,15 @@ export const Dancer = () => {
         >
           <meshStandardMaterial color={"#DC4F00"} side={THREE.DoubleSide} />
         </Circle>
-
         {/* 셰이더 조작해서 반짝이도록 하는 효과 추가 */}
         <Points positions={positions.slice(0, positions.length / 3)}>
           <pointsMaterial
             ref={starGroupRef01}
             size={0.5}
             color={new THREE.Color("#DC4F00")}
-            sizeAttenuation // 원근에 따라 크기조절
-            depthWrite // 앞에 있는게 뒤에거를 가림
-            alphaMap={texture} // 텍스쳐 넣어줌
+            sizeAttenuation
+            depthWrite
+            alphaMap={texture}
             transparent
             alphaTest={0.001}
           />
@@ -383,6 +348,13 @@ export const Dancer = () => {
             alphaTest={0.001}
           />
         </Points>
+        <PositionalAudio
+          position={[-24, 0, 0]}
+          autoplay
+          url="/audio/bgm.mp3"
+          distance={50}
+          loop
+        />
       </>
     );
   }
