@@ -392,15 +392,23 @@ useEffect(() => {
 
 ---
 
-##
+## Text 제어
 
-MainCanvas.tsx
+1. 섹션을 잘 나눠주고
+   useScroll(), useFrame()을 사용한다.
+
+2. scroll을 이용하여 frame에 작성
+
+- scroll.range(a,b) a 위치에서는 0, b(a에서 b 만큼 움직임) 위치에서는 1을 리턴하는 함수
+- scroll.curve(a,b) a, b 위치에서는 0을 리턴, 중간에서 1을 리턴하는 함수
 
 ```bash
 
 ```
 
-Modeling.tsx
+---
+
+##
 
 ```bash
 
