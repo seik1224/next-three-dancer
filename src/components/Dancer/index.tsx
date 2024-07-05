@@ -48,9 +48,13 @@ export const Dancer = () => {
     return { positions };
   }, []);
 
+  /*
+    useFrame은 @react-three/fiber 라이브러리에서 제공하는 훅으로, 매 프레임마다 호출되는 콜백을 등록하는 데 사용
+  
+  */
   useFrame(() => {
     if (!isEntered) return;
-    timeline.seek(scroll.offset * timeline.duration());
+    timeline.seek(scroll.offset * timeline.duration()); // 타임라인을 스크롤 기반으로 제어할 수 있게 해줌
     if (boxRef.current) {
       boxRef.current.material.color = new THREE.Color(colors.boxMaterialColor);
     }
@@ -173,6 +177,7 @@ export const Dancer = () => {
 
   // 스크롤 시, 일어날 애니메이션 컨트롤
   useEffect(() => {
+    if (!isEntered) return;
     if (!dancerRef.current) return;
     const pivot = new THREE.Group();
     pivot.position.copy(dancerRef.current.position);
